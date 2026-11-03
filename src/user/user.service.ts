@@ -10,6 +10,7 @@ import { validate } from 'class-validator';
 import { HttpException } from '@nestjs/common/exceptions/http.exception';
 import { HttpStatus } from '@nestjs/common';
 import * as argon2 from 'argon2';
+import { userCache } from '../shared/user-cache';
 
 @Injectable()
 export class UserService {
@@ -77,10 +78,16 @@ export class UserService {
     delete toUpdate.favorites;
 
     let updated = Object.assign(toUpdate, dto);
-    return await this.userRepository.save(updated);
+    const saved = await this.userRepository.save(updated);
+    userCache.delete(id);
+    return saved;
   }
 
   async delete(email: string): Promise<DeleteResult> {
+    const user = await this.userRepository.findOne({ email: email });
+    if (user) {
+      userCache.delete(user.id);
+    }
     return await this.userRepository.delete({ email: email});
   }
 
